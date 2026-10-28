@@ -5,10 +5,10 @@
   "description": "Moteur de relance commerciale BLOK Africa — backend NestJS (mode manual_only par défaut).",
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build",
+    "build": "nest build -p tsconfig.build.json",
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main",
     "test": "jest --config test/jest-unit.json",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand",
     "typeorm": "typeorm-ts-node-commonjs -d src/data-source.ts",

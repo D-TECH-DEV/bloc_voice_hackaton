@@ -18,7 +18,8 @@ const AppDataSource = new DataSource({
     ? (process.env.DB_NAME_TEST ?? 'blok_relance_test')
     : (process.env.DB_NAME ?? 'blok_relance'),
   entities: Object.values(entities),
-  migrations: ['migrations/*.ts'],
+  // CLI ts-node (dev) : sources TS ; bundle compilé (prod) : JS dans dist/.
+  migrations: [__filename.endsWith('.js') ? 'dist/migrations/*.js' : 'migrations/*.ts'],
   synchronize: false,
   logging: false,
 });
