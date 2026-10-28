@@ -12,3 +12,12 @@ __pycache__/
 # Caches d'outils et fichiers temporaires.
 .pytest_cache/
 *.log
+
+# Backend NestJS / Frontend Next.js (dépendances, build, données locales).
+node_modules/
+dist/
+.next/
+out/
+backend/.pgdata/
+*.tsbuildinfo
+coverage/
