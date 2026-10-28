@@ -17,8 +17,8 @@ BASE_URL = "https://api.aethexai.com/api/v1"
 API_KEY = os.environ.get("AETHEX_API_KEY") or os.environ.get("API_KEY", "")
 AGENT_ID = os.environ.get("AGENT_ID", "")
 
-CONNECT_TIMEOUT = 10   # seconds for the /connect call
-OFFER_TIMEOUT = 15     # seconds for the /offer call (SDP answer)
+CONNECT_TIMEOUT = 30   # seconds for the /connect call (upstream can take ~10s)
+OFFER_TIMEOUT = 30     # seconds for the /offer call (SDP answer)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("blok-voice")
