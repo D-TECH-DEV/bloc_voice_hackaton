@@ -1,0 +1,14 @@
+# Secrets locaux (clés API réelles) — jamais versionnés.
+.env
+
+# Environnement virtuel Python.
+.venv/
+blok_voice/.venv/
+
+# Bytecode et caches Python.
+__pycache__/
+*.py[cod]
+
+# Caches d'outils et fichiers temporaires.
+.pytest_cache/
+*.log
