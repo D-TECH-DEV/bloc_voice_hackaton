@@ -1,0 +1,977 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "BLOK External API",
+        "description": "Documentation de l API externe BLOK protegee par X-API-Key",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/api/external",
+            "description": "API External"
+        }
+    ],
+    "paths": {
+        "/products": {
+            "post": {
+                "tags": [
+                    "External Catalog"
+                ],
+                "summary": "Rechercher des produits du catalogue",
+                "description": "Utilise Meilisearch si disponible, puis fallback SQL.",
+                "operationId": "632a51ed19d3f44105beb9deedadcd1a",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "limit": {
+                                        "type": "integer",
+                                        "example": 25,
+                                        "maximum": 100,
+                                        "minimum": 1
+                                    },
+                                    "offset": {
+                                        "type": "integer",
+                                        "example": 0,
+                                        "minimum": 0
+                                    },
+                                    "category_id": {
+                                        "type": "integer",
+                                        "example": 10,
+                                        "nullable": true
+                                    },
+                                    "search": {
+                                        "type": "string",
+                                        "example": "ciment",
+                                        "nullable": true
+                                    },
+                                    "min_price": {
+                                        "type": "number",
+                                        "example": 1000,
+                                        "nullable": true
+                                    },
+                                    "max_price": {
+                                        "type": "number",
+                                        "example": 25000,
+                                        "nullable": true
+                                    },
+                                    "organization_id": {
+                                        "type": "integer",
+                                        "example": 42,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Produits recuperes"
+                    },
+                    "400": {
+                        "description": "Erreur de validation"
+                    },
+                    "401": {
+                        "description": "API key manquante ou invalide"
+                    },
+                    "403": {
+                        "description": "Permission access_external_products requise"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/add_to_cart": {
+            "post": {
+                "tags": [
+                    "External Catalog"
+                ],
+                "summary": "Ajouter un ou plusieurs produits au panier",
+                "description": "Accepte soit une ligne simple, soit un tableau items pour ajout multiple.",
+                "operationId": "f65a8d651098e762ad997cc542fe946c",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "user_id": {
+                                        "type": "integer",
+                                        "example": 100
+                                    },
+                                    "organization_id": {
+                                        "type": "integer",
+                                        "example": 42
+                                    },
+                                    "product_variant_id": {
+                                        "type": "integer",
+                                        "example": 123,
+                                        "nullable": true
+                                    },
+                                    "qty": {
+                                        "type": "integer",
+                                        "example": 2,
+                                        "nullable": true,
+                                        "minimum": 1
+                                    },
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "product_variant_id",
+                                                "qty"
+                                            ],
+                                            "properties": {
+                                                "product_variant_id": {
+                                                    "type": "integer",
+                                                    "example": 123
+                                                },
+                                                "qty": {
+                                                    "type": "integer",
+                                                    "example": 2,
+                                                    "minimum": 1
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Produit ajoute ou quantite mise a jour"
+                    },
+                    "400": {
+                        "description": "Erreur de validation"
+                    },
+                    "401": {
+                        "description": "API key manquante ou invalide"
+                    },
+                    "403": {
+                        "description": "Permission access_external_add_to_cart requise ou utilisateur hors organisation"
+                    },
+                    "404": {
+                        "description": "Variante introuvable ou inactive"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/catalog/product-variants/resolve": {
+            "post": {
+                "tags": [
+                    "External Catalog Automation"
+                ],
+                "summary": "Resoudre des variantes par termes exacts (id, sku, name)",
+                "operationId": "1514ec138fdbf623834523b2ab207db4",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/catalog/products/search": {
+            "post": {
+                "tags": [
+                    "External Catalog Automation"
+                ],
+                "summary": "Rechercher des produits/variants pour automation catalogue",
+                "operationId": "904a48df4b140903c843ca30f59bf9f0",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/catalog/automation-context": {
+            "get": {
+                "tags": [
+                    "External Catalog Automation"
+                ],
+                "summary": "Contexte compact pour automation catalogue",
+                "operationId": "be17160008b131fb05891818fdd7e9ce",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/catalog/lookups/categories": {
+            "get": {
+                "tags": [
+                    "External Catalog Automation"
+                ],
+                "summary": "Lookup categories catalogue",
+                "operationId": "94dcae3efd3d7785ca5ff24b7da4d5d5",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/catalog/lookups/brands": {
+            "get": {
+                "tags": [
+                    "External Catalog Automation"
+                ],
+                "summary": "Lookup marques catalogue",
+                "operationId": "3ae279c129d4c6516099f5f732b09abb",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/catalog/brands/resolve": {
+            "post": {
+                "tags": [
+                    "External Catalog Automation"
+                ],
+                "summary": "Resoudre ou creer une marque catalogue",
+                "operationId": "33c27a908c5e5f5be89a6c14271f4bb3",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "201": {
+                        "description": "Cree"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/catalog/lookups/suppliers": {
+            "get": {
+                "tags": [
+                    "External Catalog Automation"
+                ],
+                "summary": "Lookup fournisseurs catalogue",
+                "operationId": "0e7c16e2e21572839457c5a787bf0737",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/catalog/media": {
+            "post": {
+                "tags": [
+                    "External Catalog Automation"
+                ],
+                "summary": "Uploader des images catalogue",
+                "operationId": "41e9e635425a95954f188f918ca0fe0e",
+                "responses": {
+                    "201": {
+                        "description": "Cree"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/catalog/products/bulk-import": {
+            "post": {
+                "tags": [
+                    "External Catalog Automation"
+                ],
+                "summary": "Importer des produits catalogue",
+                "operationId": "ff915235be4f3a26d2cce774b777deb3",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "422": {
+                        "description": "Validation"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/suppliers": {
+            "get": {
+                "tags": [
+                    "External Directory"
+                ],
+                "summary": "Lister les fournisseurs",
+                "operationId": "7ec58cc3f2654b28df823e5d08b5fe98",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/suppliers/with-categories": {
+            "get": {
+                "tags": [
+                    "External Directory"
+                ],
+                "summary": "Lister les fournisseurs avec leurs catégories produit",
+                "operationId": "9b61cee982f854e3900cf9993e6e84a8",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/suppliers/{id}": {
+            "get": {
+                "tags": [
+                    "External Directory"
+                ],
+                "summary": "Détail fournisseur",
+                "operationId": "df27695b0a144035a14b007da5af3b94",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "404": {
+                        "description": "Non trouvé"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/customers": {
+            "get": {
+                "tags": [
+                    "External Directory"
+                ],
+                "summary": "Lister les clients",
+                "operationId": "a17b851ccc3af572ed43e8173a8c5b2e",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/customers/{id}": {
+            "get": {
+                "tags": [
+                    "External Directory"
+                ],
+                "summary": "Détail client",
+                "operationId": "e139f4f9358bf170549aec0ace75fcfd",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "404": {
+                        "description": "Non trouvé"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/files": {
+            "get": {
+                "tags": [
+                    "External Files"
+                ],
+                "summary": "Lister les fichiers",
+                "operationId": "a4fd1dacbcb972c7cffae656ba3f75e3",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "External Files"
+                ],
+                "summary": "Uploader un fichier",
+                "operationId": "288e9ba712d04c1ac9c9d6be6463ad3f",
+                "responses": {
+                    "201": {
+                        "description": "Cree"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/files/{publicId}": {
+            "get": {
+                "tags": [
+                    "External Files"
+                ],
+                "summary": "Détail fichier",
+                "operationId": "21908c124d9b1ef5d0909f1ebc3a1aa1",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "404": {
+                        "description": "Non trouvé"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/files/{publicId}/download": {
+            "get": {
+                "tags": [
+                    "External Files"
+                ],
+                "summary": "Télécharger un fichier",
+                "operationId": "ec41db9a4eb632fa70cdfd3025918b28",
+                "responses": {
+                    "200": {
+                        "description": "Fichier"
+                    },
+                    "404": {
+                        "description": "Non trouvé"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/notifications": {
+            "post": {
+                "tags": [
+                    "External Notifications"
+                ],
+                "summary": "Notifier un utilisateur",
+                "operationId": "583bc7ea5576e5ac2a8832df7a92633f",
+                "responses": {
+                    "201": {
+                        "description": "Cree"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/quotes/{id}/pdf": {
+            "get": {
+                "tags": [
+                    "External Quote PDFs"
+                ],
+                "summary": "Télécharger le PDF généré d’un devis",
+                "operationId": "d56ec5017b613889e4c2741f75fb9178",
+                "responses": {
+                    "200": {
+                        "description": "PDF"
+                    },
+                    "404": {
+                        "description": "Non trouvé"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "External Quote PDFs"
+                ],
+                "summary": "Uploader un PDF associé à un devis",
+                "operationId": "2b6e41ff60971942700c9c14c5659bd7",
+                "responses": {
+                    "201": {
+                        "description": "Cree"
+                    },
+                    "404": {
+                        "description": "Non trouvé"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/rfqs": {
+            "post": {
+                "tags": [
+                    "External RFQ"
+                ],
+                "summary": "Creer une RFQ depuis une app externe",
+                "operationId": "66d4005457672192d0638ffbabbf511f",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "organization_id"
+                                ],
+                                "properties": {
+                                    "organization_id": {
+                                        "type": "integer",
+                                        "example": 42
+                                    },
+                                    "file_name": {
+                                        "type": "string",
+                                        "example": "rfq-discutai.pdf",
+                                        "nullable": true
+                                    },
+                                    "line_items": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "extracted_text": {
+                                                    "type": "string",
+                                                    "example": "Ciment 50kg",
+                                                    "nullable": true
+                                                },
+                                                "matched_product": {
+                                                    "type": "object",
+                                                    "nullable": true,
+                                                    "additionalProperties": true
+                                                },
+                                                "matched_products": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "additionalProperties": true
+                                                    },
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "RFQ creee",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "RFQ créée avec succès."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "API key manquante ou invalide"
+                    },
+                    "403": {
+                        "description": "Permission access_external_create_rfqs requise"
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/supplier-cotation-batches/send": {
+            "post": {
+                "tags": [
+                    "External Supplier Cotation Batch"
+                ],
+                "summary": "Envoyer un batch de demandes de cotation fournisseur (WhatsApp template)",
+                "operationId": "6d6720b8584b27c56182a9a204748a11",
+                "responses": {
+                    "200": {
+                        "description": "Batch traité (échecs partiels inclus)."
+                    },
+                    "401": {
+                        "description": "API key manquante ou invalide"
+                    },
+                    "403": {
+                        "description": "Permission access_external_send_supplier_cotation_batch requise"
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/unmatched-products/unmatched": {
+            "get": {
+                "tags": [
+                    "External Unmatched Products"
+                ],
+                "summary": "Liste des produits encore unmatched",
+                "operationId": "ccaae5f4bd9e36482cd0aa06721106be",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "API key manquante ou invalide"
+                    },
+                    "403": {
+                        "description": "Permission access_external_get_unmatched_products requise"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/unmatched-products/set-processing": {
+            "post": {
+                "tags": [
+                    "External Unmatched Products"
+                ],
+                "summary": "Marquer des produits unmatched en processing",
+                "operationId": "12badb8d985d054174cef67e62df52cb",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "API key manquante ou invalide"
+                    },
+                    "403": {
+                        "description": "Permission access_external_set_processing_unmatched_products requise"
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/unmatched-products/cancel": {
+            "post": {
+                "tags": [
+                    "External Unmatched Products"
+                ],
+                "summary": "Annuler des produits non trouvés (bulk)",
+                "operationId": "6ddf9341b1ae6d06663e34ac15cfb860",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "API key manquante ou invalide"
+                    },
+                    "403": {
+                        "description": "Permission access_external_cancel_unmatched_products requise"
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/unmatched-products/{id}/match": {
+            "post": {
+                "tags": [
+                    "External Unmatched Products"
+                ],
+                "summary": "Associer un produit non trouvé à une variante",
+                "operationId": "e0a5e48fac3d90630860ecdec091f352",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "API key manquante ou invalide"
+                    },
+                    "403": {
+                        "description": "Permission access_external_match_unmatched_products requise"
+                    },
+                    "404": {
+                        "description": "Non trouvé"
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/smart-rfqs": {
+            "post": {
+                "tags": [
+                    "External API (generated)"
+                ],
+                "summary": "POST /smart-rfqs (ExternalSmartRfqController@store)",
+                "operationId": "c0c76fd23e6d196152b47a953e123777",
+                "responses": {
+                    "201": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Non authentifie"
+                    },
+                    "403": {
+                        "description": "Interdit"
+                    },
+                    "404": {
+                        "description": "Non trouve"
+                    },
+                    "422": {
+                        "description": "Validation"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/smart-rfqs/{id}": {
+            "put": {
+                "tags": [
+                    "External API (generated)"
+                ],
+                "summary": "PUT /smart-rfqs/{id} (ExternalSmartRfqController@update)",
+                "operationId": "0210c9bb257c1f154b6a37d8ff74fabd",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Non authentifie"
+                    },
+                    "403": {
+                        "description": "Interdit"
+                    },
+                    "404": {
+                        "description": "Non trouve"
+                    },
+                    "422": {
+                        "description": "Validation"
+                    }
+                },
+                "security": [
+                    {
+                        "ExternalApiKey": []
+                    }
+                ]
+            }
+        },
+        "/": {
+            "get": {
+                "summary": "Placeholder (spec requiert au moins un path)",
+                "operationId": "c1c8287876fad0e81d033fd6928bb23e",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "servers": [
+                    {
+                        "url": "/api/external",
+                        "description": "API External"
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "ExternalApiKey": {
+                "type": "apiKey",
+                "description": "API key externe generee depuis le CRUD admin client-api-keys",
+                "name": "X-API-Key",
+                "in": "header"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "External Catalog",
+            "description": "Endpoints catalogue et panier pour apps externes"
+        },
+        {
+            "name": "External Catalog Automation",
+            "description": "Endpoints catalogue pour MCP et apps externes autorisees"
+        },
+        {
+            "name": "External Directory",
+            "description": "Clients et fournisseurs pour apps externes"
+        },
+        {
+            "name": "External Files",
+            "description": "Fichiers pour apps externes"
+        },
+        {
+            "name": "External Notifications",
+            "description": "Notifications back-office pour apps externes"
+        },
+        {
+            "name": "External Quote PDFs",
+            "description": "PDF de devis pour apps externes"
+        },
+        {
+            "name": "External RFQ",
+            "description": "Endpoints RFQ pour apps externes"
+        },
+        {
+            "name": "External Supplier Cotation Batch",
+            "description": "Envoi batch de demandes de cotation fournisseur via WhatsApp LAM"
+        },
+        {
+            "name": "External Unmatched Products",
+            "description": "File d’attente de matching catalogue pour agents externes"
+        },
+        {
+            "name": "External API (generated)",
+            "description": "Catalogue généré des routes sans annotation sur contrôleur"
+        }
+    ]
+}
