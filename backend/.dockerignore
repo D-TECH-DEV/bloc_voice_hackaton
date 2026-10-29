@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+.pgdata/
+*.log
+*.tsbuildinfo
+# Jamais de secret dans l'image : le .env hôte est exclu du contexte.
+.env
+.env.*
+!.env.example

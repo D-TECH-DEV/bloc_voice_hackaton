@@ -47,3 +47,13 @@ Tenu à jour à chaque étape. « Terminé » = implémenté **et** vérifié.
 - Appels sortants (triple verrou), écritures Core (`ENABLE_CORE_WRITES`),
   notifications externes, scoring commercial (aucun signal d'intention
   vérifiable), synchronisation massive clients.
+
+## Docker (ajout phase locale durable)
+
+- Créé : `docker-compose.yml` + `docker-compose.override.yml` (bind mounts,
+  volumes `pgdata`/`*_node_modules`, healthchecks, ports 127.0.0.1),
+  3 Dockerfiles + `.dockerignore`, `.env.docker.example`, `docs/docker.md`.
+- Services réels : `postgres`, `backend-api`, `frontend-commercial`,
+  `voice-agent`, `migrate`. Non retenus et justifiés : redis, worker, reverse-proxy.
+- Validé sans daemon : `docker compose config` uniquement. Builds, watched
+  reload, persistance et healthchecks : **à exécuter sur machine avec daemon**.

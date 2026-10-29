@@ -1,5 +1,6 @@
 # Secrets locaux (clés API réelles) — jamais versionnés.
 .env
+.env.docker
 
 # Environnement virtuel Python.
 .venv/
