@@ -10,7 +10,9 @@ services:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis dans .env.docker}"
       POSTGRES_DB: "${POSTGRES_DB:-blok_relance}"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # PG18 exige UN seul montage au parent : l'image crée 18/docker dessous.
+      # Monter .../data directement fait échouer l'entrypoint (voir docker-entrypoint.sh).
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test:
         - CMD-SHELL
