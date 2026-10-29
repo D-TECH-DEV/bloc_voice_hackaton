@@ -1,27 +1,42 @@
-name: blok-relance
 
-# Socle commun : images, santé, dépendances, persistance.
-# Le développement local (bind mounts, ports, watch) vit dans
-# docker-compose.override.yml, chargé automatiquement.
-# Chaque service a un rôle réel : aucun conteneur vide.
-# Non retenus (justifié dans docs/docker.md) : redis, worker séparé, reverse-proxy.
+name: blok-relance
 
 services:
   postgres:
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-blok_relance}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis (voir .env.docker.example)}
-      POSTGRES_DB: ${POSTGRES_DB:-blok_relance}
+      POSTGRES_USER: "${POSTGRES_USER:-blok_relance}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis dans .env.docker}"
+      POSTGRES_DB: "${POSTGRES_DB:-blok_relance}"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
+    networks:
+      - bloknet
+
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: "${POSTGRES_USER:-blok_relance}"
+      DB_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}"
+      DB_NAME: "${POSTGRES_DB:-blok_relance}"
+    command: ["npm", "run", "migration:run"]
     networks:
       - bloknet
 
@@ -33,49 +48,34 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
-      PORT: 3001
+      PORT: "3001"
       DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: ${POSTGRES_USER:-blok_relance}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}
-      DB_NAME: ${POSTGRES_DB:-blok_relance}
-      CORE_API_BASE_URL: ${CORE_API_BASE_URL:-https://core-api-dev.blok.africa/api/external}
-      CORE_API_KEY: ${CORE_API_KEY:-}
-      CORE_API_TIMEOUT_MS: ${CORE_API_TIMEOUT_MS:-8000}
-      MOCK_CORE: ${MOCK_CORE:-true}
-      ENABLE_CORE_WRITES: ${ENABLE_CORE_WRITES:-false}
-      VOICE_TOOL_SECRET: ${VOICE_TOOL_SECRET:?VOICE_TOOL_SECRET requis}
-      OPERATOR_ADMIN_TOKEN: ${OPERATOR_ADMIN_TOKEN:?OPERATOR_ADMIN_TOKEN requis}
-      OPERATOR_SALES_TOKEN: ${OPERATOR_SALES_TOKEN:?OPERATOR_SALES_TOKEN requis}
-      BUSINESS_TIMEZONE: ${BUSINESS_TIMEZONE:-Africa/Abidjan}
+      DB_PORT: "5432"
+      DB_USER: "${POSTGRES_USER:-blok_relance}"
+      DB_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}"
+      DB_NAME: "${POSTGRES_DB:-blok_relance}"
+      CORE_API_BASE_URL: "${CORE_API_BASE_URL:-https://core-api-dev.blok.africa/api/external}"
+      CORE_API_KEY: "${CORE_API_KEY:-}"
+      CORE_API_TIMEOUT_MS: "${CORE_API_TIMEOUT_MS:-8000}"
+      MOCK_CORE: "${MOCK_CORE:-true}"
+      ENABLE_CORE_WRITES: "${ENABLE_CORE_WRITES:-false}"
+      VOICE_TOOL_SECRET: "${VOICE_TOOL_SECRET:?VOICE_TOOL_SECRET requis}"
+      OPERATOR_ADMIN_TOKEN: "${OPERATOR_ADMIN_TOKEN:?OPERATOR_ADMIN_TOKEN requis}"
+      OPERATOR_SALES_TOKEN: "${OPERATOR_SALES_TOKEN:?OPERATOR_SALES_TOKEN requis}"
+      BUSINESS_TIMEZONE: "${BUSINESS_TIMEZONE:-Africa/Abidjan}"
       OUTBOUND_CALLS_ENABLED: "false"
-      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-true}
+      SCHEDULER_ENABLED: "${SCHEDULER_ENABLED:-true}"
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 40s
-    networks:
-      - bloknet
-
-  # Migrations versionnées, tâche unique (jamais de synchronize).
-  migrate:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    restart: "no"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: ${POSTGRES_USER:-blok_relance}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}
-      DB_NAME: ${POSTGRES_DB:-blok_relance}
-    command: ["npm", "run", "migration:run"]
     networks:
       - bloknet
 
@@ -89,10 +89,12 @@ services:
         condition: service_healthy
     environment:
       BACKEND_URL: http://backend-api:3001
-      OPERATOR_TOKEN: ${OPERATOR_SALES_TOKEN:?OPERATOR_SALES_TOKEN requis}
-      OPERATOR_ADMIN_TOKEN: ${OPERATOR_ADMIN_TOKEN:?OPERATOR_ADMIN_TOKEN requis}
+      OPERATOR_TOKEN: "${OPERATOR_SALES_TOKEN:?OPERATOR_SALES_TOKEN requis}"
+      OPERATOR_ADMIN_TOKEN: "${OPERATOR_ADMIN_TOKEN:?OPERATOR_ADMIN_TOKEN requis}"
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
       interval: 20s
       timeout: 5s
       retries: 3
@@ -106,11 +108,13 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      AETHEX_API_KEY: ${AETHEX_API_KEY:-}
-      AGENT_ID: ${AGENT_ID:-}
+      AETHEX_API_KEY: "${AETHEX_API_KEY:-}"
+      AGENT_ID: "${AGENT_ID:-}"
       PYTHONDONTWRITEBYTECODE: "1"
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://127.0.0.1:5000/health',timeout=5)\""]
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=5)"
       interval: 20s
       timeout: 5s
       retries: 3
@@ -120,7 +124,7 @@ services:
 
 volumes:
   pgdata: # Données PostgreSQL : survivent aux arrêts et recréations.
-  backend_node_modules: # Dépendances du conteneur (non masquées par le bind).
+  backend_node_modules:
   frontend_node_modules:
 
 networks:

@@ -2,6 +2,8 @@
 # Bind mounts des sources (hot reload, aucun rebuild à chaque modification),
 # ports publiés sur 127.0.0.1 uniquement, volumes nommés pour node_modules
 # (le bind ne doit jamais masquer les dépendances du conteneur).
+# La base (docker-compose.yml) reste la source de vérité : build, env,
+# healthchecks, dépendances. Ici uniquement les deltas du poste développeur.
 
 services:
   backend-api:
