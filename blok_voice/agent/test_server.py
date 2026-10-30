@@ -1,4 +1,4 @@
-"""Tests du backend BLOK Voice Copilot (stdlib unittest, sans dépendance).
+"""Tests du backend ESTHER / BLOK Relance (stdlib unittest, sans dépendance).
 
 Lancez depuis la racine du dépôt :
     blok_voice/.venv/bin/python -m unittest discover -s blok_voice/agent -p "test_*.py"
@@ -45,7 +45,7 @@ class HealthTest(unittest.TestCase):
         r = c.get("/")
         self.assertEqual(r.status_code, 200)
         html = r.get_data(as_text=True)
-        self.assertIn("BLOK Voice Copilot", html)
+        self.assertIn("ESTHER", html)
         self.assertIn("startBtn", html)
         self.assertIn("endBtn", html)
 

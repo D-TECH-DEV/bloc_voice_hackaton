@@ -69,10 +69,13 @@ th { color: var(--muted); font-weight: 600; }
 .pill.blocked, .pill.refused { background: #fdecea; border-color: #f3b8b3; }
 .pill.done, .pill.resolved, .pill.granted { background: #e6f4ea; border-color: #a9d8b4; }
 .pill.claimed, .pill.in_progress, .pill.awaiting_human { background: var(--warn-bg); border-color: #e8cf9a; }
+.pill.simulated { background: var(--warn-bg); border-color: #e8cf9a; }
+.pill.selected, .pill.active { background: #e6f4ea; border-color: #a9d8b4; }
+.pill.ended { background: #eef1f4; }
 .muted { color: var(--muted); }
 .error { background: #fdecea; border: 1px solid #f3b8b3; border-radius: var(--radius); padding: 0.8rem 1rem; }
 .empty { background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius); padding: 1.2rem; color: var(--muted); }
-form.inline { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: end; margin: 0.8rem 0; }
+form.inline { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; margin: 0.8rem 0; }
 label { display: grid; gap: 0.2rem; font-size: 0.85rem; color: var(--muted); }
 input, select, textarea {
   font: inherit;

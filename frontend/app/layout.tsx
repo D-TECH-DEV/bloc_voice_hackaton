@@ -28,6 +28,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <a href="/transferts">Transferts</a>
           <a href="/decisions">Décisions</a>
           <a href="/consents">Consentements</a>
+          <a href="/conversation">Conversation</a>
+          <a href="/vocale">Voix ESTHER</a>
         </nav>
         <ModeBanner />
         <main>{children}</main>

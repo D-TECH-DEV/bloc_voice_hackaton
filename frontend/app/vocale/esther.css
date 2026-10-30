@@ -1,0 +1,164 @@
+/* Expérience vocale ESTHER : scène immersive sombre, panneaux clairs BLOK. */
+
+.esther {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.esther-stage {
+  background: radial-gradient(120% 90% at 50% 0%, #14395c 0%, #0a1f33 55%, #060f1a 100%);
+  color: #f2f6fa;
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  min-height: 30rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.esther-kicker {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9fc3e8;
+}
+
+.esther-orb {
+  width: min(17rem, 60vw);
+  height: min(17rem, 60vw);
+}
+
+.esther-status {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+}
+
+.esther-invite {
+  margin: 0;
+  color: #c3d6e8;
+  font-size: 0.95rem;
+}
+
+.esther-indicators {
+  margin: 0;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.esther-stage .pill {
+  background: #ffffff22;
+  border-color: #ffffff44;
+  color: #fff;
+}
+
+.esther-stage .error {
+  width: 100%;
+  text-align: left;
+}
+
+.esther-stage .muted {
+  color: #9db4c9;
+}
+
+.esther-controls {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.esther-primary {
+  font-size: 1.05rem;
+  padding: 0.7rem 1.8rem;
+  border-radius: 999px;
+  background: #fff;
+  border-color: #fff;
+  color: var(--accent);
+}
+
+.esther-stage button.secondary {
+  background: transparent;
+  color: #fff;
+  border-color: #ffffff66;
+}
+
+.esther-stage button.danger {
+  background: transparent;
+  color: #ffb4ab;
+  border-color: #ffb4ab;
+}
+
+.esther-stage button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.esther-toggles {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.esther-mini {
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.3rem 0.8rem;
+}
+
+.esther-side {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.esther-side h2,
+.esther-quote h2 {
+  margin-top: 0;
+}
+
+.esther-side h3 {
+  font-size: 0.95rem;
+  margin: 0.8rem 0 0.3rem;
+}
+
+.esther-talk {
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.92rem;
+}
+
+.esther-quote {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .esther {
+    grid-template-columns: 1fr;
+  }
+  .esther-stage {
+    min-height: 26rem;
+    padding: 1.5rem 1rem;
+  }
+  .esther-side {
+    order: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .esther-primary {
+    transition: none;
+  }
+}

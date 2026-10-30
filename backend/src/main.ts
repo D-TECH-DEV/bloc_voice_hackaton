@@ -28,9 +28,11 @@ async function bootstrap(): Promise<void> {
       .build(),
   );
   SwaggerModule.setup('api/docs', app, document);
-  await app.listen(config.PORT, '127.0.0.1');
+  // Écoute sur toutes les interfaces : en Docker, 127.0.0.1 rendrait
+  // l'API injoignable depuis le frontend (réseau bloknet).
+  await app.listen(config.PORT, '0.0.0.0');
   // eslint-disable-next-line no-console
-  console.log(`relance-backend en écoute sur 127.0.0.1:${config.PORT} (mode manual_only)`);
+  console.log(`relance-backend en écoute sur 0.0.0.0:${config.PORT} (mode manual_only)`);
 }
 
 void bootstrap();

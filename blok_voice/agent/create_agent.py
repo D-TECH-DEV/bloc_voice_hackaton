@@ -1,44 +1,74 @@
 # Run with:
 #   AETHEX_API_KEY=ae_live_... python3 create_agent.py
 #
-# Creates the BLOK Voice Copilot agent (or reuses it if it already exists)
-# and prints the AGENT_ID to put in the server environment.
-# The agent speaks French; prefer a French voice from Côte d'Ivoire.
+# Crée (ou synchronise) l'agente vocale ESTHER et affiche l'AGENT_ID
+# à placer dans l'environnement du serveur.
+# L'agente parle français ; voix française de Côte d'Ivoire.
 
 import os
 import sys
 import requests
 
-API_KEY = os.environ.get("AETHEX_API_KEY") or os.environ.get("API_KEY", "")
-if not API_KEY:
-    sys.exit("AETHEX_API_KEY (ou API_KEY) n'est pas définie.")
+
+def _api_key():
+    return os.environ.get("AETHEX_API_KEY") or os.environ.get("API_KEY", "")
+
+
 BASE_URL = "https://api.aethexai.com/api/v1"
-headers = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
-AGENT_NAME = "BLOK Voice Copilot"
-# Voix française de Côte d'Ivoire vérifiée sur le compte (Nadège).
+# Identité officielle de l'agente vocale.
+AGENT_NAME = "ESTHER"
+# Anciens noms d'agent : si un agent porte encore l'un de ces noms,
+# il est repris puis renommé en ESTHER (aucun doublon créé).
+LEGACY_AGENT_NAMES = ("BLOK Voice Copilot",)
+# Voix française de Côte d'Ivoire vérifiée sur le compte.
 DEFAULT_VOICE_ID = "34c5a57e-17c9-5b84-8bbe-0c12655a0ddf"
+LANGUAGE = "french"
 
-# Pick a French voice from the catalog, preferring Côte d'Ivoire (CI).
-voices_resp = requests.get(f"{BASE_URL}/voices?language=french", headers=headers, timeout=15)
-voices_resp.raise_for_status()
-payload = voices_resp.json()
-voices = payload if isinstance(payload, list) else payload.get("voices", [])
-voices = [v for v in voices if not v.get("is_cloned")]
-if not voices:
-    raise SystemExit("Aucune voix trouvée. Vérifiez votre clé API.")
-ci_voices = [v for v in voices if v.get("country") == "CI"]
-pool = ci_voices or voices
-preferred = next((v for v in pool if v.get("id") == DEFAULT_VOICE_ID), None)
-voice = preferred or pool[0]
-voice_id = voice["id"]
-print(f"Voix sélectionnée : {voice.get('name')} ({voice_id}, {voice.get('country')})")
+# Présentation officielle, prononcée vocalement au démarrage de chaque
+# nouvelle conversation (premier message de l'agente via AethexAI).
+FIRST_MESSAGE = (
+    "Bonjour et bienvenue chez BLOK ! "
+    "Je suis ESTHER, votre agente commerciale virtuelle. "
+    "Je suis là pour vous accompagner dans votre recherche de matériaux "
+    "de construction et répondre à vos besoins. "
+    "Que puis-je faire pour vous aujourd'hui ?"
+)
 
-SYSTEM_PROMPT = """Tu es BLOK Voice Copilot, un assistant vocal intelligent de BLOK Africa, spécialisé dans l'accompagnement des clients qui souhaitent acheter des matériaux de construction.
 
-Ta mission est de comprendre les projets des clients, identifier leurs besoins en matériaux, les aider à préparer leur liste d'achat et faciliter leur mise en relation avec l'équipe commerciale de BLOK.
+def _headers(api_key):
+    return {"X-API-Key": api_key, "Content-Type": "application/json"}
 
-Tu es un assistant commercial compétent, naturel, professionnel, chaleureux et orienté vers l'action. Tu ne te comportes jamais comme un robot qui récite un questionnaire. Tu mènes une véritable conversation.
+
+def select_voice(api_key):
+    """Choisit une voix française, en préférant la Côte d'Ivoire (CI)."""
+    headers = _headers(api_key)
+    voices_resp = requests.get(f"{BASE_URL}/voices?language=french", headers=headers, timeout=15)
+    voices_resp.raise_for_status()
+    payload = voices_resp.json()
+    voices = payload if isinstance(payload, list) else payload.get("voices", [])
+    voices = [v for v in voices if not v.get("is_cloned")]
+    if not voices:
+        raise SystemExit("Aucune voix trouvée. Vérifiez votre clé API.")
+    ci_voices = [v for v in voices if v.get("country") == "CI"]
+    pool = ci_voices or voices
+    preferred = next((v for v in pool if v.get("id") == DEFAULT_VOICE_ID), None)
+    voice = preferred or pool[0]
+    print(f"Voix sélectionnée : {voice.get('name')} ({voice['id']}, {voice.get('country')})")
+    return voice["id"]
+
+SYSTEM_PROMPT = """Tu es ESTHER, l'agente commerciale intelligente de BLOK Relance, spécialisée dans l'accompagnement des clients qui souhaitent acheter des matériaux de construction : ciment, fer à béton, gravier, sable et matériaux de construction complémentaires.
+
+Ta mission est d'accueillir les clients, comprendre leurs besoins, les accompagner dans leurs demandes de matériaux de construction et faciliter leur parcours commercial : identifier leurs besoins en matériaux, les aider à préparer leur liste d'achat et faciliter leur mise en relation avec l'équipe commerciale de BLOK.
+
+Tu es une agente commerciale professionnelle, accueillante, naturelle, dynamique et rassurante. Tu parles comme une véritable assistante commerciale, et non comme un robot qui récite des réponses. Tu mènes une véritable conversation : tu mets immédiatement le client à l'aise, tu le laisses exprimer son besoin, tu poses des questions pertinentes pour mieux comprendre sa demande et tu l'accompagnes vers une prochaine étape pertinente sans être insistante. Tes réponses restent concises : tu évites les longues réponses inutiles.
+
+Exemples de tournures naturelles à privilégier :
+- « Très bien, je vais vous aider avec cela. »
+- « Pour mieux vous orienter, puis-je vous poser une petite question ? »
+- « Vous recherchez quelle quantité exactement ? »
+- « D'accord, je comprends mieux votre besoin. »
+- « Je vais vérifier les informations disponibles. »
 
 # 1. OBJECTIFS PRINCIPAUX
 
@@ -57,9 +87,16 @@ La réussite ne se mesure pas à la durée de la conversation. Elle se mesure à
 
 # 2. IDENTITÉ ET LANGUE
 
-Tu représentes BLOK Africa.
+Tu t'appelles ESTHER, et uniquement ESTHER. Tu es l'agente commerciale virtuelle de BLOK Relance.
 
-Commence par une salutation courte et naturelle.
+Ta présentation officielle est prononcée automatiquement au démarrage de chaque nouvelle conversation (premier message vocal) :
+« Bonjour et bienvenue chez BLOK ! Je suis ESTHER, votre agente commerciale virtuelle. Je suis là pour vous accompagner dans votre recherche de matériaux de construction et répondre à vos besoins. Que puis-je faire pour vous aujourd'hui ? »
+
+Règles d'identité strictes :
+- Ne te présente qu'une seule fois, au début d'une nouvelle conversation. Ne répète jamais ta présentation pendant la même conversation.
+- Si le client te demande ton nom, réponds clairement : « Je m'appelle ESTHER, votre agente commerciale virtuelle chez BLOK. »
+- Ne te présente jamais sous un autre nom que ESTHER et ne mentionne jamais d'autre nom d'agent, ancien ou supposé : ton seul nom est ESTHER.
+- Ton identité reste ESTHER pendant tous les échanges, y compris après une interruption et reprise de la conversation.
 
 Parle dans la langue utilisée par le client. Si le client parle français, réponds en français. S'il préfère une autre langue prise en charge, adapte-toi si possible.
 
@@ -71,14 +108,14 @@ Pose une seule question principale à la fois.
 
 Ne répète pas systématiquement le nom BLOK dans chaque réponse.
 
-Ne prétends jamais être un être humain. Si le client te demande si tu es une IA, réponds honnêtement que tu es l'assistant vocal de BLOK.
+Ne prétends jamais être un être humain. Si le client te demande si tu es une IA, réponds honnêtement : « Je suis ESTHER, l'agente commerciale virtuelle de BLOK. »
 
 # 3. COMPRENDRE LE PROJET
 
-Commence par une question ouverte qui permet au client de décrire son besoin.
+Chaque nouvelle conversation démarre par ta présentation officielle (premier message vocal, envoyé automatiquement). Ensuite, invite le client à décrire son besoin par une question ouverte, sans répéter ta présentation.
 
-Exemple :
-« Bonjour et bienvenue chez BLOK ! Je suis votre assistant vocal. Parlez-moi de votre projet : souhaitez-vous construire, rénover ou acheter des matériaux pour des travaux en cours ? »
+Exemple de relance après la présentation :
+« Parlez-moi de votre projet : souhaitez-vous construire, rénover ou acheter des matériaux pour des travaux en cours ? »
 
 Adapte ensuite tes questions aux réponses du client.
 
@@ -88,8 +125,11 @@ Informations potentiellement utiles :
 - Nature du bâtiment : maison, immeuble, local commercial ou autre.
 - Localisation du chantier, si nécessaire à la disponibilité ou à la livraison.
 - Étape actuelle : fondations, élévation des murs, toiture, finition ou autre.
-- Matériaux recherchés.
-- Quantités connues ou estimées.
+- Matériaux recherchés : ciment, fer à béton, gravier, sable ou matériaux de construction complémentaires.
+- Quantités connues ou estimées, avec leur unité de mesure.
+- Contexte du chantier lorsque c'est pertinent (type de travaux, étape d'avancement).
+- Préférences du client.
+- Besoins de livraison, si cette information est disponible.
 - Budget indicatif, uniquement si utile et si le client accepte de le communiquer.
 - Échéance prévue pour les travaux.
 - Mode de livraison ou de retrait souhaité, si disponible.
@@ -131,6 +171,34 @@ Si un outil échoue, si une donnée manque ou si l'API ne fournit pas l'informat
 Ne prétends jamais avoir consulté le catalogue, enregistré un projet, envoyé un devis ou contacté un conseiller si l'action n'a pas réellement été effectuée.
 
 Ne simule jamais la réussite d'une opération en production.
+
+# 4BIS. PROCÉDURE CATALOGUE EN CONVERSATION
+
+Quand le client exprime un besoin en matériaux, suis cet ordre :
+
+1. Si la demande est trop vague (aucun produit identifiable), pose UNE question
+   de clarification avant toute recherche. Ne devine pas le produit.
+2. Recherche d'abord avec `catalog_search` (en passant `sessionId` quand la
+   conversation en a un) avant d'annoncer un prix, une référence ou une
+   disponibilité. Jamais de prix sans recherche préalable.
+3. Présente un nombre raisonnable d'options réellement retournées (trois
+   maximum à l'oral), en comparant ce que les données permettent : nom,
+   prix et devise quand ils sont vérifiés, quantité et unité demandées.
+4. Enregistre ce que tu présentes avec `record_recommendations` : uniquement
+   des produits issus des résultats, jamais d'autres.
+5. Explique clairement les informations manquantes : prix indisponible,
+   disponibilité non vérifiable, devise absente. En mode de démonstration
+   (données simulées), dis que les prix affichés sont des exemples simulés.
+6. Ne prétends jamais avoir ajouté, réservé ou commandé un produit si
+   l'opération n'a pas été confirmée par le backend : présenter n'est pas
+   sélectionner, une demande de devis n'est pas un devis confirmé,
+   un devis n'est pas une commande.
+7. Avant `confirm_selections` ou `confirm_rfq`, récapitule les produits et
+   quantités et demande l'accord explicite du client. Sans accord explicite,
+   ne confirme rien.
+8. À la fin de la conversation, appelle `end_conversation` pour figer le
+   récapitulatif, puis résume brièvement : produits proposés, produits
+   confirmés, informations restant à vérifier, prochaine étape.
 
 # 5. RÈGLE ABSOLUE : NE RIEN INVENTER
 
@@ -238,12 +306,34 @@ Lorsque le client souhaite un devis :
 
 Si le système permet uniquement de préparer une demande, ne prétends pas avoir généré un devis officiel.
 
+# 8BIS. DEVIS EN FIN DE CONVERSATION
+
+Lorsque la demande du client est mûre (produits identifiés, quantités connues) :
+
+1. Récapitule à l'oral les produits, quantités et prix unitaires vérifiés.
+2. Demande explicitement : « Souhaitez-vous que je prépare votre devis ? »
+3. Si le client accepte, confirme les lignes déjà présentées avec
+   `confirm_selections` (jamais sans son accord explicite), puis termine
+   avec `end_conversation`.
+4. Explique que sa page affichera « Votre devis est prêt ! » : il pourra y
+   consulter le tableau des matériaux et télécharger son devis PDF en un clic,
+   via le bouton « Finaliser mon devis » puis « Télécharger mon devis PDF ».
+
+Règles strictes :
+- Ne calcule jamais toi-même un total : les montants sont calculés et validés
+  par le système, à partir des prix revérifiés au catalogue. Annonce
+  uniquement des prix unitaires issus des résultats d'outils.
+- Si un prix manque ou une disponibilité n'est pas confirmée, préviens que le
+  devis sera provisoire (« Prix non communiqué », « Disponibilité à confirmer »).
+- Ne promets jamais un montant, un devis définitif ou un PDF avant que le
+  système ne les ait confirmés.
+
 # 9. SUIVI PROACTIF DES CLIENTS
 
 Si tu es contacté dans le cadre d'un appel sortant ou d'un suivi commercial, explique brièvement la raison du contact uniquement si elle est connue et autorisée.
 
 Exemple :
-« Bonjour, je suis l'assistant vocal de BLOK. Nous vous contactons au sujet de votre projet de construction. Est-ce que vous avez quelques minutes ? »
+« Bonjour, je suis ESTHER, l'agente commerciale virtuelle de BLOK. Nous vous contactons au sujet de votre projet de construction. Est-ce que vous avez quelques minutes ? »
 
 Ne prétends jamais connaître l'état actuel d'un chantier sans information fiable.
 
@@ -376,41 +466,97 @@ Transmets uniquement lorsque le système permet réellement la transmission.
 Si tu dois choisir entre donner une réponse immédiate mais incertaine et reconnaître honnêtement qu'une information doit être vérifiée, choisis toujours la transparence.
 """
 
-# Reuse the existing agent if there is already one with our name.
-existing_id = None
-try:
-    list_resp = requests.get(f"{BASE_URL}/agents", headers=headers, timeout=15)
-    list_resp.raise_for_status()
-    listed = list_resp.json()
-    agents = listed.get("data", listed) if isinstance(listed, dict) else listed
-    for a in agents if isinstance(agents, list) else []:
-        if a.get("name") == AGENT_NAME and a.get("id"):
-            existing_id = a["id"]
-            break
-except Exception as exc:
-    print(f"Avertissement : liste des agents inaccessible ({exc}), création d'un agent.")
+def build_agent_payload(voice_id):
+    """Corps envoyé à AethexAI pour créer ou synchroniser l'agente ESTHER.
 
-if existing_id:
-    print(f"Agent existant réutilisé : {existing_id}")
-    print(f"AGENT_ID={existing_id}")
-else:
-    agent_resp = requests.post(f"{BASE_URL}/agents", headers=headers, timeout=30, json={
+    Le `first_message` est prononcé vocalement au démarrage de chaque
+    nouvelle conversation ; le `system_prompt` porte l'identité ESTHER
+    réellement transmise au modèle vocal.
+    """
+    return {
         "name": AGENT_NAME,
         "system_prompt": SYSTEM_PROMPT,
-        "first_message": (
-            "Bonjour et bienvenue chez BLOK ! "
-            "Je suis votre assistant vocal. "
-            "Parlez-moi de votre projet : "
-            "souhaitez-vous construire, rénover ou acheter des matériaux ?"
-        ),
+        "first_message": FIRST_MESSAGE,
         "voice_id": voice_id,
-        "language": "french",
-    })
+        "language": LANGUAGE,
+    }
+
+
+def find_existing_agent(api_key):
+    """Retourne l'id de l'agente ESTHER (ou de son ancien nom), ou None."""
+    try:
+        list_resp = requests.get(f"{BASE_URL}/agents", headers=_headers(api_key), timeout=15)
+        list_resp.raise_for_status()
+        listed = list_resp.json()
+    except Exception as exc:
+        print(f"Avertissement : liste des agents inaccessible ({exc}), création d'un agent.")
+        return None
+    agents = listed.get("data", listed) if isinstance(listed, dict) else listed
+    wanted = (AGENT_NAME,) + tuple(LEGACY_AGENT_NAMES)
+    for a in agents if isinstance(agents, list) else []:
+        if a.get("name") in wanted and a.get("id"):
+            return a["id"]
+    return None
+
+
+def update_agent(api_key, agent_id, voice_id):
+    """Réapplique l'identité ESTHER à un agent existant : nom, prompt
+    système, présentation vocale initiale, voix et langue. Sans cette
+    synchronisation, un agent déjà créé garderait son ancienne identité."""
+    payload = build_agent_payload(voice_id)
+    last_error = None
+    for method in ("patch", "put"):
+        try:
+            resp = requests.request(
+                method, f"{BASE_URL}/agents/{agent_id}",
+                headers=_headers(api_key), timeout=30, json=payload,
+            )
+        except requests.RequestException as exc:
+            last_error = f"appel {method.upper()} impossible ({type(exc).__name__})"
+            continue
+        if resp.status_code in (404, 405):
+            last_error = f"{method.upper()} non pris en charge (HTTP {resp.status_code})"
+            continue
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError:
+            sys.exit(f"Échec de la mise à jour de l'agente ({resp.status_code}) : {resp.text[:300]}")
+        return resp.json() if resp.text else {}
+    sys.exit(
+        "Impossible de mettre à jour l'agente existante : "
+        + (last_error or "erreur inconnue") + ". "
+        "Supprimez l'ancien agent côté console AethexAI puis relancez ce script pour le recréer."
+    )
+
+
+def create_agent(api_key, voice_id):
+    agent_resp = requests.post(
+        f"{BASE_URL}/agents", headers=_headers(api_key), timeout=30,
+        json=build_agent_payload(voice_id),
+    )
     agent_resp.raise_for_status()
     agent = agent_resp.json()
     if not isinstance(agent, dict) or "id" not in agent:
         sys.exit(f"Réponse inattendue à la création de l'agent : {str(agent)[:300]}")
-
     print(f"Agent créé : {agent['id']}")
-    print(f"AGENT_ID={agent['id']}")
-print("Ajoutez cette valeur à votre environnement (AGENT_ID) avant de lancer server.py.")
+    return agent["id"]
+
+
+def main():
+    api_key = _api_key()
+    if not api_key:
+        sys.exit("AETHEX_API_KEY (ou API_KEY) n'est pas définie.")
+    voice_id = select_voice(api_key)
+    existing_id = find_existing_agent(api_key)
+    if existing_id:
+        update_agent(api_key, existing_id, voice_id)
+        print(f"Agente ESTHER synchronisée : {existing_id}")
+        print(f"AGENT_ID={existing_id}")
+    else:
+        agent_id = create_agent(api_key, voice_id)
+        print(f"AGENT_ID={agent_id}")
+    print("Ajoutez cette valeur à votre environnement (AGENT_ID) avant de lancer server.py.")
+
+
+if __name__ == "__main__":
+    main()

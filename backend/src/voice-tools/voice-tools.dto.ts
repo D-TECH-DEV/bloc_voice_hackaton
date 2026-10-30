@@ -25,6 +25,83 @@ export class ToolCatalogSearchDto {
   @IsInt()
   @Min(1)
   categoryId?: number;
+
+  /** Session de conversation : la recherche y est enregistrée (traçabilité). */
+  @IsOptional()
+  @IsUUID()
+  sessionId?: string;
+}
+
+export class ToolRecommendationItemDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  variantId?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  ref?: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(256)
+  label!: string;
+
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  qty?: number;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(32)
+  unit?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  unitPrice?: number;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(8)
+  currency?: string;
+}
+
+export class ToolRecordRecommendationsDto {
+  @IsUUID()
+  sessionId!: string;
+
+  @IsOptional()
+  @IsUUID()
+  searchId?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ToolRecommendationItemDto)
+  items!: ToolRecommendationItemDto[];
+}
+
+export class ToolConfirmSelectionsDto {
+  @IsUUID()
+  sessionId!: string;
+
+  /** Produits proposés à confirmer (identifiants du récapitulatif de session). */
+  @IsArray()
+  @IsUUID(undefined, { each: true })
+  itemIds!: string[];
+
+  /** Accord explicite du client, exigé et vérifié. */
+  @IsBoolean()
+  confirmationClient!: boolean;
+}
+
+export class ToolEndConversationDto {
+  @IsUUID()
+  sessionId!: string;
 }
 
 export class ToolListItemDto {
@@ -83,6 +160,11 @@ export class ToolConfirmRfqDto {
   @MinLength(8)
   @MaxLength(128)
   idempotenceKey!: string;
+
+  /** Session de conversation : la demande de devis y est rattachée (statut du récapitulatif). */
+  @IsOptional()
+  @IsUUID()
+  sessionId?: string;
 }
 
 export class ToolOutcomeDto {

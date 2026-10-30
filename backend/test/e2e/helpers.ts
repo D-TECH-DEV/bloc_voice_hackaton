@@ -30,6 +30,9 @@ export async function createE2EApp(): Promise<E2EContext> {
   const dataSource = app.get(DataSource);
   // Base de test dédiée : purge complète avant chaque suite.
   for (const table of [
+    'voice_session_items',
+    'voice_session_searches',
+    'voice_sessions',
     'decision_logs',
     'operator_actions',
     'call_attempts',
@@ -38,6 +41,7 @@ export async function createE2EApp(): Promise<E2EContext> {
     'voice_consents',
     'material_list_items',
     'material_lists',
+    'quotes',
     'handoffs',
     'system_activations',
   ]) {

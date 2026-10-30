@@ -12,8 +12,12 @@ import { MOCK_CATALOG } from './fixtures';
 export interface CatalogItem {
   variantId: number | null;
   productId: number | null;
+  /** Référence produit d'origine (NULL si la réponse ne la fournit pas). */
+  reference: string | null;
   nom: string;
   prix: number | null;
+  /** Devise telle que retournée (NULL si absente) : jamais supposée. */
+  devise: string | null;
   unite: string | null;
   disponible: boolean | null;
   /** Vrai uniquement si le champ existait avec un type crédible dans la réponse. */
@@ -59,11 +63,15 @@ function mapItem(raw: Record<string, unknown>): CatalogItem {
   const stockRaw = num(pick(raw, ['stock', 'stock_qty', 'quantity_available']));
   const disponible =
     typeof dispoRaw === 'boolean' ? dispoRaw : stockRaw !== null ? stockRaw > 0 : null;
+  const reference = str(pick(raw, ['reference', 'ref', 'sku', 'code_produit']));
+  const devise = str(pick(raw, ['currency', 'devise', 'currency_code']));
   return {
     variantId,
     productId,
+    reference,
     nom,
     prix,
+    devise,
     unite,
     disponible,
     prixVerifie: prix !== null,
@@ -87,8 +95,10 @@ export class CatalogAdapter {
         items: items.map((p) => ({
           variantId: p.variant_id,
           productId: null,
+          reference: null,
           nom: p.nom,
           prix: null,
+          devise: null,
           unite: p.unite,
           disponible: null,
           prixVerifie: false,

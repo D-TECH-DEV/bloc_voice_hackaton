@@ -1,4 +1,5 @@
 export * from './voice-consent.entity';
+export * from './voice-session.entity';
 export * from './consent-event.entity';
 export * from './outreach-task.entity';
 export * from './call-attempt.entity';
@@ -7,3 +8,4 @@ export * from './material-list.entity';
 export * from './handoff.entity';
 export * from './operator-action.entity';
 export * from './system-activation.entity';
+export * from '../quotes/quote.entity';

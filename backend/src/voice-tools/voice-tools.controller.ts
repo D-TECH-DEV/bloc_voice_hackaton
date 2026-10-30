@@ -8,14 +8,18 @@ import { RfqAdapter } from '../core-integration/rfq.adapter';
 import { HandoffsService } from '../handoffs/handoffs.service';
 import { MaterialListsService } from '../material-lists/material-lists.service';
 import { VoiceConsentsService } from '../voice-consents/voice-consents.service';
+import { VoiceSessionsService } from '../voice-sessions/voice-sessions.service';
 import { ApiError } from '../common/errors/api-error';
 import {
   ToolCatalogSearchDto,
   ToolConfirmRfqDto,
+  ToolConfirmSelectionsDto,
+  ToolEndConversationDto,
   ToolHandoffDto,
   ToolOptOutDto,
   ToolOutcomeDto,
   ToolPrepareListDto,
+  ToolRecordRecommendationsDto,
 } from './voice-tools.dto';
 
 /**
@@ -35,6 +39,7 @@ export class VoiceToolsController {
     private readonly attempts: CallAttemptsService,
     private readonly consents: VoiceConsentsService,
     private readonly handoffs: HandoffsService,
+    private readonly sessions: VoiceSessionsService,
   ) {}
 
   private correlation(headers: Record<string, unknown>): string {
@@ -45,10 +50,82 @@ export class VoiceToolsController {
   @Post('catalog-search')
   async catalogSearch(@Body() dto: ToolCatalogSearchDto, @Headers() headers: Record<string, unknown>) {
     const result = await this.catalog.search(dto.query, { limit: 8, categoryId: dto.categoryId });
+    let searchId: string | undefined;
+    if (dto.sessionId) {
+      const search = await this.sessions.recordSearch(dto.sessionId, dto.query, result);
+      searchId = search.id;
+    }
     return {
       correlationId: this.correlation(headers),
       ...result,
+      sessionId: dto.sessionId ?? null,
+      searchId: searchId ?? null,
       note: 'Prix et disponibilités non vérifiés quand les fanions valent false : les annoncer comme tels.',
+    };
+  }
+
+  /**
+   * Enregistre les produits effectivement présentés au client (recommandations).
+   * Distinguer présenter ≠ sélectionner : rien n'est confirmé ici.
+   */
+  @Post('record-recommendations')
+  async recordRecommendations(
+    @Body() dto: ToolRecordRecommendationsDto,
+    @Headers() headers: Record<string, unknown>,
+  ) {
+    const rows = await this.sessions.recordRecommendations(dto.sessionId, dto.items, dto.searchId);
+    return {
+      correlationId: this.correlation(headers),
+      sessionId: dto.sessionId,
+      recommandees: rows.length,
+      itemIds: rows.map((r) => r.id),
+      rappel: 'Produits proposés uniquement : une sélection exige la confirmation explicite du client.',
+    };
+  }
+
+  /**
+   * Confirme des produits proposés après accord explicite du client.
+   * Sans confirmationClient=true : 422, rien n'est enregistré.
+   */
+  @Post('confirm-selections')
+  async confirmSelections(
+    @Body() dto: ToolConfirmSelectionsDto,
+    @Headers() headers: Record<string, unknown>,
+  ) {
+    if (dto.confirmationClient !== true) {
+      throw new ApiError(
+        'VALIDATION_ERROR',
+        'Sélection refusée : confirmation explicite du client requise.',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+    const rows = await this.sessions.confirmSelections(dto.sessionId, dto.itemIds);
+    return {
+      correlationId: this.correlation(headers),
+      sessionId: dto.sessionId,
+      confirmees: rows.length,
+      itemIds: rows.map((r) => r.id),
+    };
+  }
+
+  /** Termine la conversation et fige le contexte (récapitulatif rejouable). */
+  @Post('end-conversation')
+  async endConversation(
+    @Body() dto: ToolEndConversationDto,
+    @Headers() headers: Record<string, unknown>,
+  ) {
+    const session = await this.sessions.endSession(dto.sessionId);
+    const recap = await this.sessions.getRecap(dto.sessionId);
+    return {
+      correlationId: this.correlation(headers),
+      sessionId: session.id,
+      statut: session.status,
+      resume: {
+        proposees: recap.proposes.length,
+        selectionnees: recap.selectionnes.length,
+        totalEstime: recap.totalEstime,
+        donneesSimulees: recap.donneesSimulees,
+      },
     };
   }
 
@@ -85,11 +162,15 @@ export class VoiceToolsController {
       lines: dto.items.map((i) => ({ texte: i.label, variantId: i.variantId })),
       idempotenceKey: dto.idempotenceKey,
     });
+    if (dto.sessionId && created.rfqNumber) {
+      await this.sessions.linkRfq(dto.sessionId, created.rfqNumber, created.mock);
+    }
     return {
       correlationId: this.correlation(headers),
       rfqNumber: created.rfqNumber,
       mock: created.mock,
       suivi: 'indisponible',
+      sessionId: dto.sessionId ?? null,
     };
   }
 

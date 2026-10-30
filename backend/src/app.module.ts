@@ -11,9 +11,11 @@ import { HandoffsModule } from './handoffs/handoffs.module';
 import { HealthController } from './health/health.controller';
 import { MaterialListsModule } from './material-lists/material-lists.module';
 import { OutreachTasksModule } from './outreach-tasks/outreach-tasks.module';
+import { QuotesModule } from './quotes/quotes.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { TelephonyModule } from './telephony/telephony.module';
 import { VoiceConsentsModule } from './voice-consents/voice-consents.module';
+import { VoiceSessionsModule } from './voice-sessions/voice-sessions.module';
 import { VoiceToolsModule } from './voice-tools/voice-tools.module';
 import { loadConfiguration, type AppConfig } from './config/configuration';
 import * as entities from './entities';
@@ -49,9 +51,11 @@ import { TasksController } from './outreach-tasks/tasks.controller';
     DecisionEngineModule,
     TelephonyModule,
     VoiceConsentsModule,
+    VoiceSessionsModule,
     OutreachTasksModule,
     CallAttemptsModule,
     MaterialListsModule,
+    QuotesModule,
     HandoffsModule,
     VoiceToolsModule,
     SchedulerModule,

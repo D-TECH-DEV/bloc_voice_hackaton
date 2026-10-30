@@ -1,90 +1,51 @@
-# Environnement local Docker — BLOK Relance
+# BLOK Relance sous Docker — procédure de référence
 
-## Services
-
-| Service | Rôle réel | Port hôte | Santé |
-|---|---|---|---|
-| `postgres` | Base persistante (volume `pgdata`) | — (interne au réseau `bloknet`) | `pg_isready` |
-| `backend-api` | NestJS : métier, règles, outils vocaux | `127.0.0.1:3001` | `GET /health` |
-| `frontend-commercial` | Next.js : suivi interne | `127.0.0.1:3000` | `GET /` |
-| `voice-agent` | Proxy Flask existant (WebRTC, inchangé) | `127.0.0.1:5000` | `GET /health` |
-| `migrate` | Tâche unique : `migration:run` | — | — (exit 0) |
-
-**Non retenus (décision argumentée) :** `redis` (la file est en base :
-réservation atomique + balayage ; BullMQ reste une option future), `worker`
-séparé (le planificateur vit dans `backend-api` et ne compose jamais d'appel),
-`reverse-proxy` (ports localhost directs suffisent en local).
-
-## Premier démarrage
+## Commande unique
 
 ```bash
-cp .env.docker.example .env.docker   # valeurs fictives à adapter, jamais versionné
-set -a; source .env.docker; set +a   # requis pour l'interpolation ${…} du Compose
-docker compose up -d --build         # constructions initiales, une seule fois
-docker compose up migrate            # applique les migrations (idempotent)
-docker compose ps                    # tous les services : healthy
+docker compose --env-file .env.docker up -d --build
 ```
 
-Ouvrir [http://localhost:3000](http://localhost:3000) (suivi),
-santé sur `http://127.0.0.1:3001/health`, Swagger sur
-`http://127.0.0.1:3001/api/docs`, voix existante sur `:5000`.
+(Cette commande construit les images de production et démarre l'ensemble des services avec les ports publiés sur `127.0.0.1`. Ne jamais `down -v` : cela détruirait la base `pgdata`.)
 
-## Routine (sans jamais `down -v`)
+## Adresses (poste développeur)
 
-```bash
-docker compose up -d                 # démarrer
-docker compose logs -f backend-api   # journaux suivis
-docker compose restart backend-api   # redémarrer un service (après changement d'env)
-docker compose up -d --build backend-api   # reconstruire UN service (Dockerfile, deps système)
-docker compose down                  # arrêter (les volumes survivent)
-```
+- Interface : http://127.0.0.1:3000 (nouvelle expérience vocale : `/vocale`)
+- API backend : http://127.0.0.1:3001 (`/health`)
+- Proxy vocal : http://127.0.0.1:5000 (`/health`)
 
-## Quand reconstruire ? (règle en 5 cas)
+## Référence de production (`docker-compose.yml`)
 
-- **Code source modifié** (`.ts`, `.py`, `.tsx`, CSS) : **aucun rebuild**.
-  Watch NestJS, hot reload Next, `--reload` Flask détectent le bind mount.
-  Si les événements ne traversent pas : `CHOKIDAR_USEPOLLING=true` (voir
-  `docker-compose.override.yml`).
-- **Dépendance npm/Python ajoutée** : `docker compose exec backend-api npm install <pkg>`
-  (persistée dans le volume `backend_node_modules`), ou rebuild si elle doit
-  entrer dans l'image ; **toujours** reporter la dépendance dans
-  `package.json` / `requirements.txt`.
-- **Dockerfile ou paquet système modifié** : `docker compose up -d --build <service>`.
-- **Schéma de base modifié** : nouvelle migration versionnée +
-  `docker compose up migrate`. **Ne jamais effacer `pgdata`.**
-- **Variable d'environnement modifiée** : `docker compose restart <service>`
-  (ou `up -d` pour recharger `env_file`).
+Les images construisent le code source actuel à chaque `--build` :
+- `frontend/Dockerfile` : `npm run build` dans l'image puis `npm run start`
+  sur `0.0.0.0:3000`. Le `.next` hôte est exclu du contexte (`.dockerignore`)
+  et aucun volume de dev ne masque le dossier `/app`.
+- `backend/Dockerfile` : `npm run build` puis `node dist/src/main` sur `0.0.0.0:3001`.
+- `migrate` applique les migrations avant le démarrage de l'API.
+- `voice-agent` exécute le proxy Flask WebRTC sur `0.0.0.0:5000`.
 
-## Données : persistance, sauvegarde, restauration
+## Développement local (hot reload optionnel)
 
-- `pgdata` est un volume nommé : il survit à `down`, `up --build` et aux
-  recréations. Ne lancez jamais `docker compose down -v` en routine.
-- Sauvegarde : `docker compose exec postgres pg_dump -U blok_relance blok_relance > sauvegarde_$(date +%F).sql`
-- Restauration : `cat sauvegarde_XXXX.sql | docker compose exec -T postgres psql -U blok_relance blok_relance`
-- Les migrations sont rejouables (`migrations` table) et ne détruisent pas
-  de données (que des `CREATE`, relus avant application).
+- Soit en direct sur la machine : `npm run dev` dans `frontend/`.
+- Soit via Docker Compose avec bind mounts :
+  ```bash
+  docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.dev.yml up -d
+  ```
 
-## Tests via Compose
+## Si une modification n'apparaît pas
 
-```bash
-docker compose run --rm backend-api npm test        # unitaires
-docker compose run --rm backend-api npm run test:e2e # e2e (base de test dédiée)
-```
+1. Vérifier que le conteneur tourne sur le bon code :
+   `docker compose ps` puis recharger la page sans cache (`Ctrl+Maj+R`).
+2. En dev (override), le watcher utilise le polling (`WATCHPACK_POLLING`,
+   `CHOKIDAR_USEPOLLING`) : si un changement semble ignoré, redémarrer le
+   service concerné (`docker compose restart frontend-commercial`) — jamais
+   `down -v`.
+3. En base seule, tout changement exige `--build` (le build rejoue
+   `npm run build` sur le source copié).
 
-## Sécurité
+## Réseau et voix
 
-- Ports publiés sur `127.0.0.1` uniquement ; Postgres non exposé à l'hôte.
-- Secrets hors images (`.dockerignore` exclut tout `.env`) et hors dépôt
-  (`.env.docker` ignoré par Git). `OUTBOUND_CALLS_ENABLED` reste `"false"`
-  en dur dans le Compose : passer à `true` exige une modification relue.
-- Environnements séparés : le `.venv` hôte de `blok_voice/` reste local ;
-  le conteneur utilise `/opt/venv` dans l'image (jamais réinstallé au démarrage).
-
-## Limites actuelles
-
-- Vérifié sans daemon (socket bloqué dans cet environnement) :
-  `docker compose config` uniquement. Builds, démarrages, healthchecks,
-  hot-reload et persistance **à valider sur une machine avec daemon**
-  (commandes ci-dessus, dans l'ordre).
-- Fournisseur téléphonie, clé Core réelle, schémas clients/produits :
-  toujours bloquants (voir `docs/implementation-status.md`).
+- Inter-services : noms DNS Compose (`http://backend-api:3001`).
+- Navigateur → proxy vocal : `VOICE_URL` (défaut `http://127.0.0.1:5000`,
+  port publié par l'override). WebRTC + micro exigent un contexte sécurisé :
+  `http://127.0.0.1` et `http://localhost` sont acceptés par les navigateurs.
